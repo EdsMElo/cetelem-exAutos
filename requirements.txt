@@ -1,0 +1,7 @@
+flask==3.0.0
+selenium==4.16.0
+undetected-chromedriver==3.5.4
+pyotp==2.9.0
+python-dotenv==1.0.0
+beautifulsoup4==4.12.2
+webdriver_manager==4.0.1

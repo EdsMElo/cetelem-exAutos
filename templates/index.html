@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>exAutos: Extrator de Processos</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        :root {
+            --cetelem-green: #00B396;
+            --cetelem-dark: #333333;
+            --cetelem-light: #F5F5F5;
+            --cetelem-hover: #009B82;
+            --title-green-dark: #00B396;
+            --title-green-light: #00CC7D;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--cetelem-dark);
+            background-color: var(--cetelem-light);
+        }
+
+        .container {
+            max-width: 95%;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--cetelem-dark);
+            font-weight: 600;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+            background: white;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .styled-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .styled-table thead tr {
+            background-color: var(--cetelem-green);
+            color: var(--cetelem-light);
+        }
+
+        .styled-table th,
+        .styled-table td {
+            padding: 1rem;
+            border: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .styled-table tbody tr:hover {
+            background-color: rgba(0, 232, 143, 0.05);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--cetelem-green);
+            border-color: var(--cetelem-green);
+            color: var(--cetelem-light);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--cetelem-hover);
+            border-color: var(--cetelem-hover);
+            color: var(--cetelem-light);
+        }
+
+        .btn-export {
+            background-color: white;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: var(--cetelem-dark);
+        }
+
+        .btn-export:hover {
+            background-color: var(--cetelem-light);
+            border-color: var(--cetelem-green);
+        }
+
+        .form-control {
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--cetelem-green);
+            box-shadow: 0 0 0 3px rgba(0, 232, 143, 0.1);
+        }
+
+        .loading-overlay {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+        }
+
+        .spinner-border {
+            color: var(--cetelem-green) !important;
+        }
+
+        .toast {
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+                       0 1px 3px rgba(0, 0, 0, 0.08);
+            border: none;
+        }
+
+        .toast-success {
+            background-color: var(--cetelem-green);
+            color: var(--cetelem-light);
+        }
+
+        .toast-error {
+            background-color: #FF4444;
+            color: white;
+        }
+
+        .bg-warning {
+            background-color: rgba(255, 193, 7, 0.2) !important;
+            color: #856404;
+            border-radius: 6px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .toast {
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        .accordion-item {
+            margin-bottom: 5px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .accordion-button {
+            background-color: #f8f9fa;
+            color: #212529;
+            font-weight: 500;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: #e9ecef;
+            color: #0d6efd;
+        }
+
+        .accordion-body {
+            background-color: #fff;
+            padding: 15px;
+        }
+
+        .accordion-body pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .stop-extraction {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: none;
+        }
+
+        .export-buttons {
+            margin: 10px 0;
+        }
+        
+        .export-buttons button {
+            margin-right: 10px;
+        }
+
+        .stop-extraction {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: none;
+        }
+
+        .export-buttons .btn-link {
+            color: #6c757d;
+            padding: 0.25rem;
+            margin-left: 0.5rem;
+        }
+
+        .export-buttons .btn-link:hover {
+            color: #0d6efd;
+        }
+
+        .calendar-btn {
+            cursor: pointer;
+        }
+
+        .calendar-btn:hover {
+            background-color: #e9ecef;
+        }
+
+        .btn-export {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-export:hover {
+            background-color: #e9ecef;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-export i {
+            font-size: 1.1rem;
+        }
+
+        .btn-export:first-child i {
+            color: #217346; /* Excel green */
+        }
+
+        .btn-export:nth-child(2) i {
+            color: #495057; /* CSV gray */
+        }
+
+        .btn-export:last-child i {
+            color: #2B579A; /* Word blue */
+        }
+
+        .btn-group .btn-export:not(:last-child) {
+            border-right: none;
+        }
+
+        .export-buttons-container {
+            margin-top: -1px;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .stop-extraction {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+        }
+
+        .toast {
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .toast.fade-out {
+            opacity: 0;
+        }
+
+        .toast-container {
+            z-index: 11000;
+        }
+
+        .input-group {
+            height: 100%;
+        }
+
+        .input-group .form-control {
+            height: 38px;  /* Mesma altura do form-select */
+        }
+
+        .input-group .btn {
+            height: 38px;
+            padding: 0.375rem 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .form-select {
+            height: 38px;
+        }
+
+        .mb-3 {
+            margin-bottom: 1rem !important;
+            height: 70px;  /* Altura fixa para todos os grupos de form */
+        }
+
+        .form-label {
+            margin-bottom: 0.25rem;
+        }
+
+        .title-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background-color: var(--cetelem-green);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 
+                       0 1px 3px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+            height: 120px;
+        }
+
+        .title-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 30%;
+            height: 100%;
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+            pointer-events: none;
+        }
+
+        .title-container h1 {
+            color: #F5F5F5;
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.8rem;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-container .prefix {
+            position: relative;
+            display: inline-block;
+        }
+
+        .logo-cetelem {
+            height: 75px;
+            width: auto;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 0 4px rgba(200, 200, 200, 0.8));
+            transition: transform 0.2s ease;
+        }
+
+        .logo-cetelem:hover {
+            transform: scale(1.05);
+        }
+
+        @keyframes lineGrow {
+            from {
+                transform: scaleX(0);
+            }
+            to {
+                transform: scaleX(1);
+            }
+        }
+
+        .title-container h1:after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--title-green-dark);
+            border-radius: 1px;
+            transform-origin: left;
+            animation: lineGrow 0.6s ease-out forwards;
+            box-shadow: 0 0 4px var(--title-green-dark);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .title-container .prefix {
+                animation: shimmer 2s linear infinite;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -100% 0;
+            }
+            100% {
+                background-position: 100% 0;
+            }
+        }
+        
+        .sort-icon {
+            font-size: 0.8em;
+            margin-left: 4px;
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        
+        .sort-icon.active {
+            opacity: 1;
+        }
+        
+        .sort-icon.asc::before {
+            content: "\F12C";
+        }
+        
+        .sort-icon.desc::before {
+            content: "\F124";
+        }
+
+        .filter-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .filter-icon {
+            font-size: 0.8em;
+            margin-left: 4px;
+            opacity: 0.5;
+            cursor: pointer;
+        }
+
+        .filter-icon.active {
+            opacity: 1;
+            color: var(--cetelem-green);
+        }
+
+        .filter-dropdown {
+            position: fixed;
+            z-index: 1000;
+            display: none;
+            min-width: 200px;
+            padding: 8px;
+            margin: 2px 0 0;
+            background-color: #fff;
+            border: 1px solid rgba(0,0,0,.15);
+            border-radius: 4px;
+            box-shadow: 0 6px 12px rgba(0,0,0,.175);
+        }
+
+        .filter-dropdown.show {
+            display: block;
+        }
+
+        .filter-search {
+            width: 100%;
+            padding: 4px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .filter-options {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 4px;
+        }
+
+        .filter-option:hover {
+            background-color: #f8f9fa;
+        }
+
+        .filter-option input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .filter-actions {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .filter-actions button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .filter-apply {
+            background-color: var(--cetelem-green);
+            color: var(--cetelem-light);
+        }
+
+        .filter-clear {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+        }
+
+        .btn-outline-primary {
+            color: var(--cetelem-green);
+            border-color: var(--cetelem-green);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--cetelem-green);
+            border-color: var(--cetelem-green);
+            color: var(--cetelem-light);
+        }
+
+        .badge-primary {
+            background-color: var(--cetelem-green);
+            color: var(--cetelem-light);
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: var(--cetelem-green);
+            border-color: var(--cetelem-green);
+            color: var(--cetelem-light);
+            font-weight: 500;
+        }
+        
+        .init-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .init-content {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .init-steps {
+            text-align: left;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .init-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
+        .init-step.active {
+            opacity: 1;
+        }
+
+        .init-step i {
+            margin-right: 0.5rem;
+        }
+
+        .init-step.completed i {
+            color: var(--cetelem-green);
+        }
+
+        .accordion-header {
+            margin: 0;
+        }
+
+        .accordion-button {
+            background-color: var(--cetelem-green);
+            color: white;
+            font-weight: 500;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: var(--cetelem-green);
+            color: white;
+        }
+
+        .accordion-button:focus {
+            box-shadow: none;
+            border-color: rgba(0, 0, 0, 0.125);
+        }
+
+        .accordion-button::after {
+            filter: brightness(0) invert(1);
+        }
+
+        .accordion-button:not(.collapsed)::after {
+            filter: brightness(0) invert(1);
+        }
+
+        .accordion-body {
+            background-color: #fff;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Initialization Overlay -->
+    <div class="init-overlay">
+        <div class="init-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Inicializando...</span>
+            </div>
+            <h4>Inicializando o Sistema</h4>
+            <div class="init-steps">
+                <div class="init-step" id="step-chrome">
+                    <i class="bi bi-circle"></i>
+                    <span>Iniciando Chrome</span>
+                </div>
+                <div class="init-step" id="step-selenium">
+                    <i class="bi bi-circle"></i>
+                    <span>Configurando Selenium</span>
+                </div>
+                <div class="init-step" id="step-login">
+                    <i class="bi bi-circle"></i>
+                    <span>Realizando Login</span>
+                </div>
+                <div class="init-step" id="step-ready">
+                    <i class="bi bi-circle"></i>
+                    <span>Sistema Pronto</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+        <div class="mt-2 text-white">Extraindo processos...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+    <!-- Botão Flutuante de Parar Extração -->
+    <div class="stop-extraction" style="display: none;">
+        <button class="btn btn-danger btn-lg shadow-lg" onclick="stopExtraction()">
+            <i class="bi bi-stop-circle-fill"></i> Parar Extração
+        </button>
+    </div>
+
+    <div class="container py-4">
+        <div class="title-container">
+            <h1><span class="prefix">exAutos: Extrator de Processos</span></h1>
+            <img src="{{ url_for('static', filename='images/logoCetelem.png') }}" alt="Logo Cetelem" class="logo-cetelem">
+        </div>
+        
+        <!-- Status Messages -->
+        <div id="status" class="alert d-none"></div>
+        
+        <!-- Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Configurações</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="headlessMode" checked>
+                    <label class="form-check-label" for="headlessMode">
+                        Modo Headless
+                    </label>
+                    <small class="text-muted d-block">Se marcado, executa o navegador em background</small>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="screenshotMode">
+                    <label class="form-check-label" for="screenshotMode">
+                        Capturar Screenshots
+                    </label>
+                    <small class="text-muted d-block">Se marcado, captura screenshots durante a extração</small>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="testerMode">
+                    <label class="form-check-label" for="testerMode">
+                        Modo Tester
+                    </label>
+                    <small class="text-muted d-block">Se marcado, executa a extração em modo de teste</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de Filtros -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Filtros de Busca</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Coluna 1: Datas -->
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Data Inicial de Cadastro</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="start_date" placeholder="DD/MM/AAAA">
+                                <button class="btn btn-outline-secondary calendar-btn" type="button">
+                                    <i class="bi bi-calendar"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">Data Final de Cadastro</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="end_date" placeholder="DD/MM/AAAA">
+                                <button class="btn btn-outline-secondary calendar-btn" type="button">
+                                    <i class="bi bi-calendar"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna 2: Status e Limite -->
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="Filters.StatusId">
+                                <option selected="selected" value="-1">Todos</option>
+                                <option value="0">Encerrado</option>
+                                <option value="1">Ativo</option>
+                                <option value="2">A Encerrar</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="max_rows" class="form-label">Limite de Linhas</label>
+                            <select class="form-select" id="max_rows">
+                                <option value="Todos">Todos</option>
+                                <option value="1">1</option>
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Coluna 3: Acordo e Número do Processo -->
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="acordo" class="form-label">Acordo</label>
+                            <select class="form-select" id="acordo">
+                                <option value="Todos">Todos</option>
+                                <option value="Sim">Sim</option>
+                                <option value="Não">Não</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="process_number" class="form-label">Número do Processo</label>
+                            <input type="text" class="form-control" id="process_number" placeholder="Digite o número" style="height: 38px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <button class="btn btn-primary" id="extract">
+                    <i class="bi bi-cloud-download"></i> Extrair Processos
+                </button>
+                <button class="btn btn-secondary" id="clear">
+                    <i class="bi bi-trash"></i> Limpar
+                </button>
+            </div>
+            <div class="export-buttons-container" style="display: none;">
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-export" title="Exportar Excel" onclick="exportToExcel()">
+                        <i class="bi bi-file-earmark-excel"></i>
+                    </button>
+                    <button class="btn btn-sm btn-export" title="Exportar CSV" onclick="exportToCSV()">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </button>
+                    <button class="btn btn-sm btn-export" title="Exportar Word" onclick="exportToWord()">
+                        <i class="bi bi-file-earmark-word"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Abas e Grid -->
+        <div class="mb-3">
+            <ul class="nav nav-tabs" id="resultsTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="processes-tab" data-bs-toggle="tab" href="#processes">Processos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="raw-data-tab" data-bs-toggle="tab" href="#raw-data">Dados Brutos</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Results Tabs -->
+        <div class="tab-content" id="resultsTabsContent">
+            <!-- Processes Tab -->
+            <div class="tab-pane fade show active" id="processes" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">Resultados da Busca</h5>
+                                <small class="text-muted">
+                                    <span id="sortInfo"></span>
+                                    <span id="filterInfo"></span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table id="processTable" class="styled-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="id">
+                                        <div class="filter-container">
+                                            ID
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="numero_processo">
+                                        <div class="filter-container">
+                                            Número do Processo
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="adverso">
+                                        <div class="filter-container">
+                                            Adverso
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="cpf_cnpj">
+                                        <div class="filter-container">
+                                            CPF/CNPJ
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="comarca">
+                                        <div class="filter-container">
+                                            Comarca
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="estado">
+                                        <div class="filter-container">
+                                            Estado
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="tipo">
+                                        <div class="filter-container">
+                                            Tipo
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="status">
+                                        <div class="filter-container">
+                                            Status
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="escritorio">
+                                        <div class="filter-container">
+                                            Escritório
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="acordo">
+                                        <div class="filter-container">
+                                            Acordo
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th data-sort="suspeita_fraude">
+                                        <div class="filter-container">
+                                            Suspeita de Fraude
+                                            <i class="bi bi-arrow-down-up sort-icon"></i>
+                                            <i class="bi bi-funnel filter-icon"></i>
+                                        </div>
+                                    </th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Raw Data Tab -->
+            <div class="tab-pane fade" id="raw-data" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Dados Brutos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="jsonSearch" placeholder="Buscar no JSON...">
+                                <button class="btn btn-primary" type="button" id="searchJson">Buscar</button>
+                                <button class="btn btn-secondary" type="button" id="copyJson">Copiar JSON</button>
+                            </div>
+                        </div>
+                        <div id="rawDataAccordion" class="accordion"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        // Inicialização do sistema
+        document.addEventListener('DOMContentLoaded', async () => {
+            const updateInitStep = (stepId, status) => {
+                const step = document.querySelector(`#step-${stepId}`);
+                if (!step) return;
+
+                step.classList.remove('active', 'completed');
+                step.querySelector('i').className = 'bi';
+
+                if (status === 'active') {
+                    step.classList.add('active');
+                    step.querySelector('i').className = 'bi bi-arrow-right-circle-fill';
+                } else if (status === 'completed') {
+                    step.classList.add('completed');
+                    step.querySelector('i').className = 'bi bi-check-circle-fill';
+                } else {
+                    step.querySelector('i').className = 'bi bi-circle';
+                }
+            };
+
+            try {
+                // Atualiza o status inicial
+                updateInitStep('chrome', 'active');
+
+                const response = await fetch('/api/initialize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    // Atualiza os status dos passos
+                    updateInitStep('chrome', 'completed');
+                    updateInitStep('selenium', 'completed');
+                    updateInitStep('login', 'completed');
+                    updateInitStep('ready', 'completed');
+
+                    // Pequeno delay para mostrar a conclusão
+                    setTimeout(() => {
+                        document.querySelector('.init-overlay').style.display = 'none';
+                    }, 1000);
+                } else {
+                    showToast('Erro ao inicializar o sistema: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Erro ao inicializar o sistema', 'error');
+                console.error('Erro:', error);
+            }
+        });
+
+        // Variáveis globais
+        let columnFilters = {};
+        let lastData = null; // Armazena os últimos dados carregados
+        let currentSort = { column: null, direction: 'asc' };
+        let isExtracting = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configuração do Flatpickr nos botões de calendário
+            const flatpickrConfig = {
+                dateFormat: "d/m/Y",
+                allowInput: true,
+                locale: {
+                    firstDayOfWeek: 0,
+                    weekdays: {
+                        shorthand: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+                        longhand: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+                    },
+                    months: {
+                        shorthand: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                        longhand: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+                    }
+                }
+            };
+
+            // Inicializa o Flatpickr em cada input de data
+            document.querySelectorAll('#start_date, #end_date').forEach(input => {
+                flatpickr(input, {
+                    ...flatpickrConfig,
+                    clickOpens: false // Previne que o input abra o calendário ao ser clicado
+                });
+            });
+
+            // Adiciona evento de click nos botões de calendário
+            document.querySelectorAll('.calendar-btn').forEach(btn => {
+                const input = btn.parentElement.querySelector('input');
+                btn.addEventListener('click', () => {
+                    if (input._flatpickr) {
+                        input._flatpickr.toggle(); // Alterna a visibilidade do calendário
+                    }
+                });
+            });
+
+            // Permitir entrada manual de data
+            document.querySelectorAll('#start_date, #end_date').forEach(input => {
+                input.addEventListener('input', function(e) {
+                    let value = e.target.value;
+                    value = value.replace(/[^\d/]/g, '');
+                    if (value.length === 2 || value.length === 5) {
+                        if (value[value.length - 1] !== '/') {
+                            value = value + '/';
+                        }
+                    }
+                    if (value.length > 10) {
+                        value = value.slice(0, 10);
+                    }
+                    e.target.value = value;
+                });
+            });
+
+            // Mostrar/esconder botões de exportação baseado na aba ativa
+            const exportButtons = document.querySelector('.export-buttons-container');
+            document.querySelectorAll('#resultsTabs .nav-link').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    exportButtons.style.display = this.id === 'processes-tab' ? 'block' : 'none';
+                });
+            });
+
+            // Botão Limpar
+            document.getElementById('clear').addEventListener('click', () => {
+                // Limpa a tabela de processos
+                document.querySelector('#processTable tbody').innerHTML = '';
+                
+                // Limpa o accordion de dados brutos
+                document.getElementById('rawDataAccordion').innerHTML = '';
+                
+                // Reseta os campos de filtro
+                document.getElementById('start_date').value = '';
+                document.getElementById('end_date').value = '';
+                document.getElementById('status').value = '-1';
+                document.getElementById('process_number').value = '';
+                document.getElementById('max_rows').value = 'Todos';
+                document.getElementById('acordo').value = 'Todos';
+                
+                // Reseta os checkboxes
+                document.getElementById('headlessMode').checked = true;
+                document.getElementById('screenshotMode').checked = false;
+                document.getElementById('testerMode').checked = false;
+                
+                // Limpa a galeria de screenshots
+                const screenshotsGallery = document.getElementById('screenshotsGallery');
+                if (screenshotsGallery) {
+                    screenshotsGallery.innerHTML = '';
+                }
+            });
+
+            // Inicialmente mostra os botões de exportação se a aba de processos estiver ativa
+            if (document.querySelector('#processes-tab').classList.contains('active')) {
+                exportButtons.style.display = 'block';
+            }
+
+            // Função para obter os números dos processos do textarea
+            const getProcessNumbers = () => {
+                const processInput = document.getElementById('process_number');
+                if (!processInput || !processInput.value.trim()) {
+                    showToast('Por favor, insira pelo menos um número de processo', 'warning');
+                    return [];
+                }
+
+                // Divide o texto por quebras de linha e/ou vírgulas
+                return processInput.value
+                    .split(/[\n,]+/)
+                    .map(num => num.trim())
+                    .filter(num => num.length > 0);
+            };
+
+            // Função para extrair processos
+            async function extractProcesses() {
+                console.log('Iniciando extração...');
+                const processNumber = document.getElementById('process_number')?.value?.trim();
+                console.log('Número do processo:', processNumber);
+                
+                if (!processNumber) {
+                    showToast('Por favor, informe o número do processo', 'error');
+                    return;
+                }
+
+                const requestData = {
+                    process_numbers: [processNumber], // Enviando como array
+                    data_inicial: document.getElementById('start_date')?.value,
+                    data_final: document.getElementById('end_date')?.value,
+                    status: document.getElementById('status')?.value,
+                    acordo: document.getElementById('acordo')?.value,
+                    limite_linhas: document.getElementById('max_rows')?.value
+                };
+                console.log('Dados da requisição:', requestData);
+
+                showLoading(true);
+                try {
+                    console.log('Fazendo requisição para /api/extract...');
+                    const response = await fetch('/api/extract', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    console.log('Status da resposta:', response.status);
+                    const result = await response.json();
+                    console.log('Resultado:', result);
+                    
+                    showLoading(false);
+
+                    if (result.success) {
+                        if (result.data && result.data.grid_data) {
+                            console.log('Dados recebidos com sucesso');
+                            lastData = result.data;
+                            updateProcessTable(result.data);
+                            showToast('Processos extraídos com sucesso!');
+                        } else {
+                            console.log('Nenhum dado encontrado nos resultados');
+                            showToast('Nenhum dado encontrado', 'warning');
+                        }
+                    } else {
+                        console.error('Erro reportado pelo servidor:', result.message);
+                        showToast(result.message || 'Erro ao extrair processos', 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro durante a extração:', error);
+                    showLoading(false);
+                    showToast('Erro ao extrair processos', 'error');
+                }
+            }
+
+            // Event Listeners
+            document.getElementById('extract').addEventListener('click', extractProcesses);
+
+            // Inicializa as variáveis de ordenação e filtro
+            currentSort.column = null;
+            currentSort.direction = 'asc';
+            columnFilters = {};
+
+            const updateSortInfo = () => {
+                const sortInfo = document.getElementById('sortInfo');
+                if (currentSort.column) {
+                    const th = document.querySelector(`th[data-sort="${currentSort.column}"]`);
+                    const columnName = th.textContent.trim().split(' ')[0];
+                    sortInfo.textContent = `Ordenado por: ${columnName} (${currentSort.direction === 'asc' ? 'Crescente' : 'Decrescente'})`;
+                } else {
+                    sortInfo.textContent = '';
+                }
+            };
+
+            const updateFilterInfo = () => {
+                const filterInfo = document.getElementById('filterInfo');
+                const activeFilterCount = Object.keys(columnFilters).length;
+                
+                if (activeFilterCount > 0) {
+                    const filterText = Object.entries(columnFilters)
+                        .map(([column, value]) => {
+                            const th = document.querySelector(`th[data-sort="${column}"]`);
+                            const columnName = th.textContent.trim().split(' ')[0];
+                            return `${columnName}: ${value.length} selecionado(s)`;
+                        })
+                        .join(', ');
+                    filterInfo.textContent = ` | Filtros: ${filterText}`;
+                } else {
+                    filterInfo.textContent = '';
+                }
+            };
+
+            const sortTable = (column) => {
+                if (currentSort.column === column) {
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.column = column;
+                    currentSort.direction = 'asc';
+                }
+
+                // Update sort icons
+                document.querySelectorAll('.sort-icon').forEach(icon => {
+                    icon.classList.remove('active', 'asc', 'desc');
+                });
+
+                const icon = document.querySelector(`th[data-sort="${column}"] .sort-icon`);
+                icon.classList.add('active', currentSort.direction);
+
+                // Sort the data
+                const tbody = document.querySelector('#processTable tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                
+                rows.sort((a, b) => {
+                    const aValue = a.children[getColumnIndex(column)].textContent;
+                    const bValue = b.children[getColumnIndex(column)].textContent;
+                    
+                    if (column === 'valor') {
+                        return compareValues(
+                            parseFloat(aValue.replace(/[^\d,-]/g, '').replace(',', '.')),
+                            parseFloat(bValue.replace(/[^\d,-]/g, '').replace(',', '.'))
+                        );
+                    } else if (column === 'data') {
+                        return compareValues(new Date(aValue), new Date(bValue));
+                    } else {
+                        return compareValues(aValue, bValue);
+                    }
+                });
+
+                if (currentSort.direction === 'desc') {
+                    rows.reverse();
+                }
+
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+                
+                updateSortInfo();
+            };
+
+            const compareValues = (a, b) => {
+                if (a < b) return -1;
+                if (a > b) return 1;
+                return 0;
+            };
+
+            const getColumnIndex = (column) => {
+                const headers = document.querySelectorAll('#processTable th');
+                for (let i = 0; i <headers.length; i++) {
+                    if (headers[i].getAttribute('data-sort') === column) {
+                        return i;
+                    }
+                }
+                return -1;
+            };
+
+            // Add click event listeners for sorting
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const column = th.getAttribute('data-sort');
+                    sortTable(column);
+                });
+            });
+
+            // Filtering functionality
+            const createFilterDropdown = (column) => {
+                const dropdown = document.createElement('div');
+                dropdown.className = 'filter-dropdown';
+                dropdown.innerHTML = `
+                    <input type="text" class="filter-search" placeholder="Buscar...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-clear">Limpar</button>
+                        <button class="filter-apply">Aplicar</button>
+                    </div>
+                `;
+
+                // Event listeners for filter actions
+                const searchInput = dropdown.querySelector('.filter-search');
+                const clearButton = dropdown.querySelector('.filter-clear');
+                const applyButton = dropdown.querySelector('.filter-apply');
+
+                searchInput.addEventListener('input', (e) => {
+                    updateFilterOptions(dropdown, column, e.target.value);
+                });
+
+                clearButton.addEventListener('click', () => {
+                    columnFilters[column] = [];
+                    applyFilters();
+                    dropdown.remove();
+                });
+
+                applyButton.addEventListener('click', () => {
+                    const selectedValues = Array.from(
+                        dropdown.querySelectorAll('input[type="checkbox"]:checked')
+                    ).map(cb => cb.value);
+
+                    console.log('Applying filter for column:', column);
+                    console.log('Selected values:', selectedValues);
+                    
+                    columnFilters[column] = selectedValues;
+                    applyFilters();
+                    dropdown.remove();
+                });
+
+                return dropdown;
+            };
+
+            const getUniqueColumnValues = (column) => {
+                const values = new Set();
+                const tbody = document.querySelector('#processTable tbody');
+                const columnIndex = getColumnIndex(column);
+                
+                Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+                    let value;
+                    
+                    if (column === 'acordo') {
+                        const processId = row.children[0].textContent.trim();
+                        const processDetails = lastData?.raw_data?.[processId];
+                        let hasAcordo = false;
+                        
+                        if (processDetails?.detalhes_acordo?.length > 0) {
+                            hasAcordo = processDetails.detalhes_acordo[0]?.is_acordo === 'Sim';
+                        }
+                        
+                        if (!hasAcordo && processDetails?.financeiro?.lancamentos?.length > 0) {
+                            hasAcordo = processDetails.financeiro.lancamentos.some(reg => 
+                                reg && (
+                                    reg.is_acordo === 'Sim' || 
+                                    (reg.tipo && reg.tipo.toUpperCase().includes('ACORDO'))
+                                )
+                            );
+                        }
+                        
+                        value = hasAcordo ? 'Sim' : 'Não';
+                        console.log('Process ID:', processId, 'Has Acordo:', value);
+                    } else {
+                        value = row.children[columnIndex].textContent.trim();
+                    }
+                    
+                    if (value) values.add(value);
+                });
+                
+                const sortedValues = Array.from(values).sort();
+                console.log('Unique values for column', column, ':', sortedValues);
+                return sortedValues;
+            };
+
+            const updateFilterOptions = (dropdown, column, searchTerm = '') => {
+                const optionsContainer = dropdown.querySelector('.filter-options');
+                const values = getUniqueColumnValues(column);
+                
+                optionsContainer.innerHTML = values
+                    .filter(value => value.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .map(value => `
+                        <label class="filter-option">
+                            <input type="checkbox" value="${value}" 
+                                ${!columnFilters[column] || columnFilters[column].includes(value) ? 'checked' : ''}>
+                            ${value}
+                        </label>
+                    `).join('');
+            };
+
+            const applyFilters = () => {
+                const tbody = document.querySelector('#processTable tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                
+                console.log('Current filters:', columnFilters);
+                
+                rows.forEach(row => {
+                    let showRow = true;
+                    
+                    Object.entries(columnFilters).forEach(([column, allowedValues]) => {
+                        if (!allowedValues || allowedValues.length === 0) return;
+                        
+                        if (column === 'acordo') {
+                            const processId = row.children[0].textContent.trim();
+                            const processDetails = lastData?.raw_data?.[processId];
+                            let hasAcordo = false;
+                            
+                            if (processDetails?.detalhes_acordo?.length > 0) {
+                                hasAcordo = processDetails.detalhes_acordo[0]?.is_acordo === 'Sim';
+                            }
+                            
+                            if (!hasAcordo && processDetails?.financeiro?.lancamentos?.length > 0) {
+                                hasAcordo = processDetails.financeiro.lancamentos.some(reg => 
+                                    reg?.is_acordo === 'Sim' || 
+                                    (reg?.tipo && reg.tipo.toUpperCase().includes('ACORDO'))
+                                );
+                            }
+
+                            const acordoValue = hasAcordo ? 'Sim' : 'Não';
+                            console.log('Checking acordo for process:', processId, 'Value:', acordoValue, 'Allowed:', allowedValues);
+                            if (!allowedValues.includes(acordoValue)) {
+                                showRow = false;
+                            }
+                        } else {
+                            const cellValue = row.children[getColumnIndex(column)].textContent.trim();
+                            if (!allowedValues.includes(cellValue)) {
+                                showRow = false;
+                            }
+                        }
+                    });
+                    
+                    row.style.display = showRow ? '' : 'none';
+                });
+                
+                updateFilterInfo();
+                
+                // Update filter icons
+                document.querySelectorAll('.filter-icon').forEach(icon => {
+                    const column = icon.closest('th').getAttribute('data-sort');
+                    icon.classList.toggle('active', columnFilters[column]?.length > 0);
+                });
+            };
+
+            // Add filter event listeners
+            document.querySelectorAll('.filter-icon').forEach(icon => {
+                const th = icon.closest('th');
+                const column = th.getAttribute('data-sort');
+                const dropdown = createFilterDropdown(column);
+                document.body.appendChild(dropdown);
+
+                // Toggle dropdown
+                icon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isVisible = dropdown.classList.contains('show');
+                    
+                    // Hide all other dropdowns
+                    document.querySelectorAll('.filter-dropdown.show').forEach(d => {
+                        if (d !== dropdown) d.classList.remove('show');
+                    });
+                    
+                    if (!isVisible) {
+                        // Position dropdown at mouse click
+                        const rect = icon.getBoundingClientRect();
+                        dropdown.style.top = `${e.clientY}px`;
+                        dropdown.style.left = `${e.clientX}px`;
+                        
+                        updateFilterOptions(dropdown, column);
+                    }
+                    
+                    dropdown.classList.toggle('show');
+                });
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.filter-dropdown')) {
+                    document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                }
+            });
+
+            // Modify updateProcessTable to maintain filters after updates
+            const originalUpdateProcessTable = updateProcessTable;
+            updateProcessTable = (data) => {
+                originalUpdateProcessTable(data);
+                if (currentSort.column) {
+                    sortTable(currentSort.column);
+                }
+                applyFilters();
+            };
+
+            // Função para atualizar tabela de processos
+            function updateProcessTable(data) {
+                console.log('Atualizando tabela com dados:', data);
+                lastData = data;
+                
+                const tbody = document.querySelector('#processTable tbody');
+                if (!tbody) {
+                    console.error('Elemento tbody não encontrado!');
+                    return;
+                }
+                tbody.innerHTML = '';
+
+                if (!data?.grid_data?.length) {
+                    console.log('Nenhum dado para exibir na tabela');
+                    showToast('Nenhum processo encontrado', 'warning');
+                    return;
+                }
+
+                console.log('Processando', data.grid_data.length, 'registros');
+                data.grid_data.forEach((process, index) => {
+                    console.log(`Processando registro ${index + 1}/${data.grid_data.length}`);
+                    const processId = process[0];
+                    const processDetails = data.raw_data[processId];
+                    
+                    // Verifica se tem acordo
+                    let hasAcordo = false;
+                    if (processDetails?.detalhes_acordo?.length > 0) {
+                        hasAcordo = processDetails.detalhes_acordo[0]?.is_acordo === 'Sim';
+                    }
+                    if (!hasAcordo && processDetails?.financeiro?.lancamentos?.length > 0) {
+                        hasAcordo = processDetails.financeiro.lancamentos.some(reg => 
+                            reg?.is_acordo === 'Sim' || 
+                            (reg?.tipo && reg.tipo.toUpperCase().includes('ACORDO'))
+                        );
+                    }
+
+                    // Verifica suspeita de fraude
+                    const suspeitaFraude = hasAcordo ? 
+                        (processDetails?.suspeita_fraude ? 'Sim' : 'Não') : 
+                        'N/A';
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${process[0]}</td>
+                        <td>${process[2]}</td>
+                        <td>${process[3]}</td>
+                        <td>${process[4]}</td>
+                        <td>${process[5]}</td>
+                        <td>${process[6]}</td>
+                        <td>${process[7]}</td>
+                        <td>${process[8]}</td>
+                        <td>${process[9]}</td>
+                        <td>${hasAcordo ? 'Sim' : 'Não'}</td>
+                        <td>${suspeitaFraude}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary view-details" data-id="${processId}">
+                                <i class="bi bi-file-text"></i> Detalhes
+                            </button>
+                        </td>
+                    `;
+                    
+                    // Adiciona o evento de clique no botão
+                    const viewButton = tr.querySelector('.view-details');
+                    viewButton.addEventListener('click', () => {
+                        console.log('Clicou em Detalhes para processo:', processId);
+                        showRawData(processId);
+                    });
+
+                    // Adiciona destaque visual para suspeita de fraude
+                    if (suspeitaFraude === 'Sim') {
+                        tr.classList.add('table-danger');
+                    }
+
+                    tbody.appendChild(tr);
+                });
+
+                console.log('Tabela atualizada com sucesso');
+                
+                // Mostra os botões de exportação
+                const exportButtons = document.getElementById('exportButtons');
+                if (exportButtons) {
+                    exportButtons.style.display = 'block';
+                }
+            }
+
+            // Função para mostrar dados brutos
+            function showRawData(processId) {
+                console.log('Mostrando dados brutos para processo:', processId);
+                
+                if (!lastData) {
+                    console.error('Nenhum dado disponível em lastData');
+                    return;
+                }
+                
+                const details = lastData.raw_data[processId];
+                if (!details) {
+                    console.error('Nenhum detalhe encontrado para o processo:', processId);
+                    return;
+                }
+                
+                // Encontra o número do processo correto
+                const processNumber = lastData.grid_data.find(p => p[0] === processId)?.[2] || 'N/A';
+                console.log('Número do processo:', processNumber);
+                
+                // Cria o elemento de accordion se não existir
+                let accordion = document.getElementById('rawDataAccordion');
+                if (!accordion) {
+                    console.error('Accordion não encontrado!');
+                    return;
+                }
+
+                // Cria o item do accordion
+                const accordionItem = document.createElement('div');
+                accordionItem.className = 'accordion-item';
+                accordionItem.id = `accordion-${processId}`;
+
+                const headerId = `heading-${processId}`;
+                const collapseId = `collapse-${processId}`;
+
+                accordionItem.innerHTML = `
+                    <h2 class="accordion-header" id="${headerId}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#${collapseId}" aria-expanded="true" 
+                                aria-controls="${collapseId}">
+                            Processo ${processNumber} (ID: ${processId})
+                        </button>
+                    </h2>
+                    <div id="${collapseId}" class="accordion-collapse collapse show" 
+                         aria-labelledby="${headerId}">
+                        <div class="accordion-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <h5>Detalhes do Processo</h5>
+                                <button class="btn btn-sm btn-outline-primary copy-json" data-id="${processId}">
+                                    <i class="bi bi-clipboard"></i> Copiar
+                                </button>
+                            </div>
+                            <pre><code>${JSON.stringify(details, null, 2)}</code></pre>
+                        </div>
+                    </div>
+                `;
+
+                // Adiciona evento de cópia
+                const copyButton = accordionItem.querySelector('.copy-json');
+                copyButton.addEventListener('click', () => {
+                    console.log('Copiando JSON para processo:', processId);
+                    const codeContent = accordionItem.querySelector('pre code').textContent;
+                    navigator.clipboard.writeText(codeContent)
+                        .then(() => {
+                            console.log('JSON copiado com sucesso');
+                            showToast('Conteúdo copiado com sucesso!');
+                        })
+                        .catch((error) => {
+                            console.error('Erro ao copiar:', error);
+                            showToast('Erro ao copiar conteúdo', 'error');
+                        });
+                });
+
+                // Adiciona o novo item no início do accordion
+                if (accordion.firstChild) {
+                    accordion.insertBefore(accordionItem, accordion.firstChild);
+                } else {
+                    accordion.appendChild(accordionItem);
+                }
+
+                // Limita o número de itens no accordion para 5
+                while (accordion.children.length > 5) {
+                    accordion.removeChild(accordion.lastChild);
+                }
+
+                // Muda para a aba de dados brutos
+                const rawDataTab = document.querySelector('#raw-data-tab');
+                if (!rawDataTab) {
+                    console.error('Aba de dados brutos não encontrada!');
+                    return;
+                }
+                
+                console.log('Mudando para aba de dados brutos');
+                const tab = new bootstrap.Tab(rawDataTab);
+                tab.show();
+            }
+        });
+
+        // Função para mostrar/esconder o loading e o botão de parar
+        function showLoading(show = true) {
+            console.log('showLoading:', show);
+            const overlay = document.querySelector('.loading-overlay');
+            if (!overlay) {
+                console.error('Elemento loading-overlay não encontrado!');
+                return;
+            }
+            
+            const stopButton = document.querySelector('.stop-extraction');
+            if (!stopButton) {
+                console.error('Botão stop-extraction não encontrado!');
+                return;
+            }
+
+            if (show) {
+                overlay.style.display = 'flex';
+                stopButton.style.display = 'block';
+            } else {
+                overlay.style.display = 'none';
+                stopButton.style.display = 'none';
+            }
+        }
+
+        // Função para mostrar mensagens toast
+        function showToast(message, type = 'success') {
+            console.log('showToast:', message, type);
+            const toastContainer = document.querySelector('.toast-container');
+            if (!toastContainer) {
+                console.error('Container de toast não encontrado!');
+                return;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast bg-${type} fade-out`;
+            toast.innerHTML = `
+                <div class="toast-header">
+                    <strong class="me-auto">${type === 'success' ? 'Sucesso' : 'Erro'}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">${message}</div>
+            `;
+
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
