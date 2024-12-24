@@ -1,98 +1,231 @@
-# Processo Jurídico - Extrator Autos
+# exAutos - Sistema de Extração de Dados Jurídicos
 
 ## Descrição
-Este projeto é um sistema avançado de Recuperação Aumentada por Geração (RAG) especializado em processar e analisar documentos jurídicos. Ele utiliza técnicas de ponta em OCR (Reconhecimento Óptico de Caracteres) e processamento de linguagem natural, integrando Ollama para modelos de linguagem e ChromaDB para armazenamento eficiente de vetores, permitindo uma análise rápida e precisa de documentos legais.
+O exAutos é um sistema automatizado desenvolvido para extrair e processar dados jurídicos do sistema DJUR. Ele oferece uma interface web intuitiva para monitorar e gerenciar processos jurídicos, facilitando o acesso e análise de informações processuais.
 
-## Finalidade
-O objetivo principal deste sistema é revolucionar a forma como profissionais do direito interagem com documentos jurídicos. Ao combinar o poder do Ollama para geração de linguagem natural com a eficiência do ChromaDB para busca semântica, o sistema oferece:
+## Objetivo
+O principal objetivo do exAutos é automatizar a coleta de dados jurídicos, proporcionando uma maneira eficiente de acessar, monitorar e analisar informações de processos judiciais, reduzindo o tempo gasto em tarefas manuais e minimizando erros humanos.
 
-- Extração rápida de informações chave de documentos PDF jurídicos.
-- Respostas precisas e contextualizadas a consultas sobre o conteúdo dos documentos.
-- Análise semântica avançada de textos jurídicos.
+## Tecnologias Utilizadas
+- **Python**: Linguagem principal do projeto
+- **Flask**: Framework web para a interface do usuário
+- **Selenium (undetected-chromedriver)**: Para automação web e scraping
+- **BeautifulSoup**: Para parsing de HTML
+- **Docker**: Para containerização da aplicação
+- **Chrome WebDriver**: Para automação do navegador
 
 ## Componentes Principais
 
-### Ollama
-Ollama é utilizado como o motor de modelo de linguagem do projeto, oferecendo:
-- Geração de respostas naturais e contextualmente relevantes.
-- Flexibilidade para usar diferentes modelos de linguagem.
-- Processamento eficiente de consultas em linguagem natural.
+### 1. Interface Web (app.py)
+- Gerencia a interface do usuário
+- Processa requisições HTTP
+- Coordena a execução do scraping
+- Exibe resultados e status da extração
 
-### ChromaDB
-ChromaDB serve como o banco de dados vetorial do sistema, proporcionando:
-- Armazenamento eficiente de embeddings de documentos.
-- Busca semântica rápida para recuperação de informações relevantes.
-- Escalabilidade para lidar com grandes volumes de dados jurídicos.
+### 2. Scraper Legal (legal_scraper.py)
+- Realiza a automação do navegador
+- Gerencia autenticação e navegação
+- Extrai dados do sistema DJUR
+- Processa e estrutura as informações coletadas
 
-## Estrutura do Projeto
-O projeto é composto por vários módulos Python, cada um com uma função específica:
+### 3. Configurações (config.py)
+- Gerencia variáveis de ambiente
+- Configura parâmetros do sistema
+- Define constantes globais
 
-- `main.py`: Ponto de entrada da aplicação.
-- `config.py`: Configurações globais do projeto.
-- `document_processor.py`: Responsável pelo processamento de documentos PDF, incluindo OCR.
-- `document_validator.py`: Valida se o documento processado é de natureza jurídica.
-- `prompt_manager.py`: Gerencia a interação com o Ollama para gerar respostas.
-- `llm_interface.py`: Interface para interação com o Ollama.
-- `embedding_manager.py`: Gerencia a criação de embeddings para os documentos.
-- `chroma_manager.py`: Gerencia as operações do ChromaDB.
-- `rag_engine.py`: Implementa a lógica de Recuperação Aumentada por Geração, integrando Ollama e ChromaDB.
-- `app.py`: Interface web usando Flask.
+## Funcionalidades Principais
 
-## Principais Bibliotecas Utilizadas
+### Métodos do LegalScraper
 
-- `ollama`: Interface para modelos de linguagem, central para a geração de respostas.
-- `chromadb`: Banco de dados vetorial para armazenamento e busca eficiente de embeddings.
-- `flask`: Para criar a interface gráfica do usuário.
-- `langchain`: Framework para desenvolvimento de aplicações com LLMs, facilitando a integração com Ollama.
-- `spacy`: Para processamento de linguagem natural.
-- `ocrmypdf`: Para realizar OCR em documentos PDF.
-- `PyPDF2`: Para manipulação de arquivos PDF.
-- `scikit-learn`: Para funcionalidades adicionais de aprendizado de máquina.
+#### `__init__(headless=True, max_rows=None, enable_screenshots=False)`
+- Inicializa o scraper com configurações personalizáveis
+- Permite execução headless ou com interface visual
+- Configura captura de screenshots e limites de extração
 
-## Configuração do Ambiente
+#### `initialize()`
+- Inicia o navegador Chrome
+- Configura opções do WebDriver
+- Estabelece conexão com o sistema DJUR
 
-### Requisitos
-- Python 3.12+
-- Docker (opcional, para implantação em contêiner)
-- Ollama instalado e configurado (para execução local)
+#### `login()`
+- Realiza autenticação no sistema
+- Processa autenticação de dois fatores
+- Gerencia sessão do usuário
 
-### Instalação
-1. Clone o repositório:
-   ```
-   git clone [URL_DO_REPOSITORIO]
-   ```
-2. Crie um ambiente virtual:
-   ```
-   python -m venv .venv
-   source .venv/bin/activate  # No Windows use: .venv\Scripts\activate
-   ```
+#### `extract_data()`
+- Navega pelo sistema DJUR
+- Coleta dados dos processos
+- Estrutura informações extraídas
+
+### Recursos Funcionais
+
+1. **Extração Automatizada**
+   - Coleta automática de dados processuais
+   - Captura de múltiplos processos simultaneamente
+   - Estruturação dos dados em formato padronizado
+
+2. **Monitoramento em Tempo Real**
+   - Interface web para acompanhamento da extração
+   - Visualização do progresso em tempo real
+   - Alertas e notificações de status
+
+3. **Gestão de Screenshots**
+   - Captura automática de telas importantes
+   - Armazenamento organizado de evidências
+   - Rastreabilidade do processo de extração
+
+4. **Logging e Depuração**
+   - Registro detalhado de operações
+   - Logs HTML para análise
+   - Tratamento de erros e exceções
+
+## Modos de Operação
+
+### Modo HEADLESS
+- Execução sem interface gráfica do navegador
+- Ideal para ambientes de produção e servidores
+- Menor consumo de recursos do sistema
+- Execução mais rápida das operações
+- Configurável através do parâmetro `headless=True` no inicializador
+
+### Modo SCREENSHOT
+- Captura automatizada de screenshots durante a execução
+- Útil para:
+  - Debugging e análise de problemas
+  - Documentação do processo
+  - Evidências de execução
+  - Auditoria de operações
+- Screenshots são salvos no diretório `screenshots/`
+- Ativado através do parâmetro `enable_screenshots=True`
+- Cada screenshot é nomeado com timestamp para fácil rastreamento
+
+### Modo TESTER
+- Modo especial para testes e desenvolvimento
+- Gera dados simulados para teste do sistema
+- Características:
+  - Cria processos fictícios com dados realistas
+  - Simula diferentes estados processuais
+  - Gera variações de acordos e suspeitas de fraude
+  - Permite testar todas as funcionalidades sem acessar o sistema real
+- Útil para:
+  - Desenvolvimento de novas features
+  - Testes de integração
+  - Validação de regras de negócio
+  - Treinamento de usuários
+- Ativado através da função `generate_test_data()`
+
+## Interface do Usuário
+
+### Grid de Processos
+- Exibição tabular dos processos jurídicos
+- Colunas personalizáveis com informações principais:
+  - Número do processo
+  - Status
+  - Escritório responsável
+  - Tipo de processo
+  - Data de distribuição
+  - Valor da causa
+- Ordenação por qualquer coluna
+- Paginação para melhor performance
+- Atualização em tempo real dos dados
+
+### Sistema de Filtros
+- Filtros avançados para refinamento da busca:
+  - Por status do processo
+  - Por escritório
+  - Por tipo de processo
+  - Por data (período específico)
+  - Por valor da causa
+  - Por existência de acordo
+  - Por suspeita de fraude
+- Filtros combinados para buscas complexas
+- Salvamento de filtros favoritos
+- Reset rápido de todos os filtros
+- Indicador visual de filtros ativos
+
+### Aba de Dados Brutos
+- Visualização detalhada de todas as informações extraídas
+- Dados apresentados em formato JSON para análise técnica
+- Funcionalidades disponíveis:
+  - Exportação dos dados em diferentes formatos (JSON, CSV)
+  - Cópia direta para clipboard
+  - Busca textual dentro dos dados
+  - Expansão/colapso de seções
+- Informações incluídas:
+  - Dados completos do processo
+  - Histórico de movimentações
+  - Documentos anexados
+  - Partes envolvidas
+  - Detalhes de acordos
+  - Indicadores de fraude
+  - Logs de extração
+- Atualização em tempo real conforme novos dados são extraídos
+
+## Regras de Negócio
+
+### Regra do Acordo
+- O sistema identifica automaticamente processos que possuem acordo firmado
+- Critérios para identificação de acordo:
+  - Presença de termos específicos como "ACORDO", "TRANSAÇÃO" ou "COMPOSIÇÃO" nos movimentos processuais
+  - Análise do conteúdo das petições e decisões judiciais
+  - Verificação de valores acordados e condições de pagamento
+- O status do processo é atualizado para refletir a existência do acordo
+- Informações relevantes do acordo são extraídas e armazenadas:
+  - Data do acordo
+  - Valor total
+  - Número de parcelas
+  - Datas de vencimento
+  - Condições especiais
+
+### Regra de Suspeita de Fraude
+- O sistema monitora e identifica indicadores de possível fraude nos processos
+- Critérios para identificação de suspeita de fraude:
+  - Padrões suspeitos de comportamento processual
+  - Inconsistências em documentos apresentados
+  - Histórico de fraudes anteriores relacionadas às partes
+  - Múltiplos processos com características similares
+  - Advogados ou escritórios com histórico de fraudes
+- Alertas são gerados automaticamente quando identificados indicadores de fraude
+- O sistema categoriza o nível de risco da suspeita
+- Informações relevantes são registradas para análise:
+  - Tipo de suspeita
+  - Evidências encontradas
+  - Histórico relacionado
+  - Recomendações de ação
+
+## Como Executar
+
+1. Clone o repositório
+2. Configure o arquivo `.env` com suas credenciais
 3. Instale as dependências:
-   ```
+   ```bash
    pip install -r requirements.txt
    ```
-4. Configure o Ollama seguindo as instruções em [https://ollama.ai/](https://ollama.ai/)
-
-### Uso com Docker
-O projeto inclui um Dockerfile para fácil implantação, que configura automaticamente o ambiente com Ollama e ChromaDB. Para construir e executar o contêiner:
-
-1. Construa a imagem Docker:
-   ```
-   docker build -t processo-juridico-extrator .
-   ```
-2. Execute o contêiner:
-   ```
-   docker run -p 7863:7863 processo-juridico-extrator
+4. Execute o script de setup apropriado:
+   - Windows: `setup.bat`
+   - Linux/Mac: `setup.sh`
+5. Inicie a aplicação:
+   ```bash
+   python app.py
    ```
 
-## Uso
-1. Execute o script principal:
-   ```
-   python main.py
-   ```
-2. Acesse a interface web através do navegador no endereço indicado (geralmente `http://localhost:7863`).
-3. Faça upload de um documento PDF jurídico.
-4. O sistema processará o documento usando OCR, armazenará os embeddings no ChromaDB e estará pronto para responder perguntas.
-5. Faça perguntas sobre o documento e receba respostas geradas pelo Ollama, contextualizadas com informações recuperadas do ChromaDB.
+## Segurança
+- Credenciais armazenadas em variáveis de ambiente
+- Suporte a autenticação de dois fatores
+- Proteção contra detecção de automação
+
+## Monitoramento e Logs
+- Logs detalhados de execução
+- Capturas de tela para debugging
+- Registro de eventos importantes
 
 ## Contribuição
-Contribuições são bem-vindas! Estamos especialmente interessados em melhorias relacionadas à integração do Ollama e otimizações do ChromaDB. Por favor, leia o arquivo CONTRIBUTING.md (se disponível) para detalhes sobre nosso código de conduta e o processo para enviar pull requests.
+Para contribuir com o projeto:
+1. Faça um fork do repositório
+2. Crie uma branch para sua feature
+3. Faça commit das alterações
+4. Push para a branch
+5. Abra um Pull Request
+
+## Licença
+Este projeto é propriedade da Cetelem e seu uso é restrito aos termos estabelecidos pela empresa.
