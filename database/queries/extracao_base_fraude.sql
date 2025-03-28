@@ -1,0 +1,3 @@
+-- SQLite
+SELECT ag.external_id as id, fa.process_number as numero_processo, pr.parte_adversa, ag.advogados_adversos, LENGTH(ag.advogados_adversos) - LENGTH(replace(ag.advogados_adversos,',','')) + 1 as qtde_advogados_adversos, ag.nome_titular, ag.cpf_cnpj_titular, ag.valor, ag.data_pagamento FROM agreements ag inner join fraud_assessments fa on ag.external_id = fa.external_id inner join processes pr on fa.external_id = pr.external_id;
+SELECT fa.* FROM agreements ag inner join fraud_assessments fa on ag.external_id = fa.external_id;

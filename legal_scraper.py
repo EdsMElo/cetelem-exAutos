@@ -14,25 +14,25 @@ from selenium.webdriver.common.action_chains import ActionChains
 import traceback
 from bs4 import BeautifulSoup, Comment
 from scraper import GridScraper, ProcessDetailsScraper
+from database.db_manager import DatabaseManager  # Corrigindo o import
+from config import get_logger  # Importar get_logger do config.py
 
 # Configurar logging
-logging.basicConfig(level=logging.INFO)
+logger = get_logger(__name__)
 
 class LegalScraper:
-    def __init__(self, headless=True, max_rows=None, enable_screenshots=False):
+    def __init__(self, headless=True, enable_screenshots=False):
         """
         Inicializa o scraper
         Args:
             headless (bool): Se True, executa em modo headless. Se False, mostra o navegador
-            max_rows (int): Número máximo de linhas a extrair do grid. Valores possíveis: [1, 5, 10, 50, 100, None (todos)]
             enable_screenshots (bool): Se True, captura screenshots durante a extração
         """
         self.driver = None
         self.base_url = "https://cetelem.djur.adv.br/"
         self.headless = headless
-        self.max_rows = max_rows
         self.enable_screenshots = enable_screenshots
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
         load_dotenv()
         self.username = os.getenv("DJUR_USERNAME")
         self.password = os.getenv("DJUR_PASSWORD")
@@ -91,11 +91,11 @@ class LegalScraper:
                 options.add_argument('--disable-infobars')
                 options.add_argument('--ignore-certificate-errors')
                 options.add_argument('--allow-running-insecure-content')
-                options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36')
+                options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.196 Safari/537.36')
             else:
                 self.logger.info("Iniciando o Chrome em modo guiado...")
             
-            # Inicializa o driver com as opções configuradas
+            # Inicializa o driver com as opções configuradas - versão do Chrome será detectada automaticamente
             self.driver = uc.Chrome(options=options)
             self.logger.info("Chrome iniciado com sucesso")
         except Exception as e:
@@ -223,9 +223,6 @@ class LegalScraper:
             # Aguarda a página carregar completamente
             time.sleep(3)
             
-            # Log do título da página
-            self.logger.info(f"Título da página: {self.driver.title}")
-            
             # Aguarda e preenche o campo de email
             email_field = self.wait_and_find_element(
                 By.ID, "Email", 
@@ -350,7 +347,7 @@ class LegalScraper:
             self.logger.error(f"Erro inesperado: {str(e)}\nDetalhes: {type(e).__name__}, {str(e)}\nStack: {traceback.format_exc()}")
             return False, f"Erro durante o login automático: {str(e)}"
             
-    def search_processes(self, start_date=None, end_date=None, status=None, process_number=None):
+    def search_processes(self, start_date=None, end_date=None, status=None, process_number=None, acordo=None, suspeita_fraude=None):
         """Realiza a busca de processos com os filtros fornecidos"""
         try:
             # Aplica os filtros e realiza a busca
@@ -365,37 +362,53 @@ class LegalScraper:
             grid_scraper = GridScraper(self.driver)
             
             # Extrai dados do grid
-            result = grid_scraper.extract_grid_data(self.max_rows)
+            result = grid_scraper.extract_grid_data()
             
             # Para cada processo que tem acordo, busca os detalhes adicionais
             if result and 'raw_data' in result:
-                for process_id, process_data in result['raw_data'].items():
-                    # Verifica se há lançamentos financeiros
-                    if ('financeiro' in process_data and 
-                        'lancamentos' in process_data['financeiro']):
-                        
-                        # Filtra apenas lançamentos do tipo ACORDO
-                        acordos = [
-                            lanc for lanc in process_data['financeiro']['lancamentos'] 
-                            if lanc.get('tipo_lancamento', '').upper() == 'ACORDO'
-                        ]
-                        
-                        # Se encontrou acordos, extrai os detalhes
-                        if acordos:
-                            self.logger.info(f"Encontrados {len(acordos)} acordos para o processo {process_id}")
-                            
-                            # Extrai os detalhes do acordo
-                            acordo_details = self.extract_process_details(process_id)
-                            if acordo_details and 'detalhes_acordo' in acordo_details:
-                                process_data['detalhes_acordo'] = acordo_details['detalhes_acordo']
-                                self.logger.info(f"Detalhes do acordo extraídos com sucesso para o processo {process_id}")
-                            else:
-                                self.logger.warning(f"Não foi possível extrair detalhes do acordo para o processo {process_id}")
+                filtered_raw_data = {}
+                filtered_grid_data = []
+                
+                for idx, row in enumerate(result.get('grid_data', [])):
+                    process_id = row[0]
+                    process_data = result['raw_data'].get(process_id, {})
+                    
+                    # Verifica se tem acordo
+                    has_acordo = False
+                    has_suspeita_fraude = False
+                    
+                    # Verifica nos detalhes do acordo
+                    if 'detalhes_acordo' in process_data and process_data['detalhes_acordo'] != []:
+                        acordo_detail = process_data.get('detalhes_acordo', {})
+                        if acordo_detail.get('is_acordo') == 'Sim' or True:
+                            has_acordo = True
+                        if acordo_detail.get('suspeita_fraude') == 'Sim' or True:
+                            has_suspeita_fraude = True
+                    
+                    # Aplica os filtros
+                    should_include = True
+                    
+                    # Filtro de acordo
+                    if acordo and acordo != "Todos":
+                        should_include = should_include and ((acordo == "Sim") == has_acordo)
+                    
+                    # Filtro de suspeita de fraude
+                    if suspeita_fraude and suspeita_fraude != "Todos":
+                        should_include = should_include and ((suspeita_fraude == "Sim") == has_suspeita_fraude)
+                    
+                    # Se passou nos filtros, inclui nos resultados
+                    if should_include:
+                        filtered_grid_data.append(row)
+                        filtered_raw_data[process_id] = process_data
+                
+                # Atualiza os resultados com os dados filtrados
+                result['grid_data'] = filtered_grid_data
+                result['raw_data'] = filtered_raw_data
             
             return result
             
         except Exception as e:
-            self.logger.error(f"Erro durante a busca de processos: {str(e)}\nDetalhes: {type(e).__name__}, {str(e)}\nStack: {traceback.format_exc()}")
+            self.logger.error(f"Erro ao buscar processos: {str(e)}")
             raise
 
     def _apply_filters(self, start_date=None, end_date=None, status=None, process_number=None):
@@ -445,34 +458,160 @@ class LegalScraper:
                         EC.presence_of_element_located((By.ID, "Filters_StatusId"))
                     )
                     
-                    # Map status text to value
-                    status_map = {
-                        "Encerrado": "0",
-                        "Ativo": "1",
-                        "Suspenso": "2"
-                    }
+                    # Ensure status is always set to "-1" when "Todos" is selected
+                    status_value = "-1"
+                    if status and status not in ["Todos", "-1", ""]:
+                        # Map other status values
+                        status_map = {
+                            "Encerrado": "0",
+                            "Ativo": "1",
+                            "A Encerrar": "2"
+                        }
+                        
+                        if status in status_map:
+                            status_value = status_map[status]
+                        else:
+                            self.logger.warning(f"Status inválido: {status}, usando '-1' (Todos)")
                     
-                    if status not in status_map:
-                        self.logger.error(f"Status inválido: {status}. Valores permitidos: {list(status_map.keys())}")
-                        raise ValueError(f"Status inválido: {status}")
+                    self.logger.info(f"Status definido como: {status_value}")
                     
-                    status_value = status_map[status]
-                    
-                    # Tenta diferentes abordagens para selecionar o valor
                     try:
-                        Select(status_select).select_by_value(status_value)
-                    except:
-                        try:
-                            self.driver.execute_script(
-                                f"arguments[0].value = '{status_value}';", 
-                                status_select
-                            )
-                        except:
-                            option = WebDriverWait(self.driver, 10).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, f"#Filters_StatusId option[value='{status_value}']"))
-                            )
-                            option.click()
+                        # Script para forçar a seleção correta do valor no combo
+                        js_script = """
+                            function setSelectValue(select, value) {
+                                // Limpa seleções anteriores
+                                select.selectedIndex = -1;
+                                Array.from(select.options).forEach(opt => {
+                                    opt.selected = false;
+                                    opt.removeAttribute('selected');
+                                });
+                                
+                                // Encontra a option correta
+                                const option = Array.from(select.options).find(opt => opt.value === value);
+                                if (!option) return false;
+                                
+                                // Método 1: Simulação de clique com coordenadas
+                                const rect = option.getBoundingClientRect();
+                                const centerX = rect.left + rect.width / 2;
+                                const centerY = rect.top + rect.height / 2;
+                                
+                                ['mousedown', 'mouseup', 'click'].forEach(eventType => {
+                                    option.dispatchEvent(new MouseEvent(eventType, {
+                                        bubbles: true,
+                                        cancelable: true,
+                                        view: window,
+                                        clientX: centerX,
+                                        clientY: centerY,
+                                        screenX: centerX,
+                                        screenY: centerY
+                                    }));
+                                });
+                                
+                                // Método 2: Atualização direta
+                                option.selected = true;
+                                option.setAttribute('selected', 'selected');
+                                select.value = value;
+                                select.selectedIndex = option.index;
+                                
+                                // Método 3: Eventos de formulário
+                                ['change', 'input', 'blur'].forEach(eventType => {
+                                    select.dispatchEvent(new Event(eventType, {
+                                        bubbles: true,
+                                        cancelable: true
+                                    }));
+                                });
+                                
+                                // Método 4: jQuery se disponível
+                                if (window.jQuery) {
+                                    window.jQuery(select)
+                                        .val(value)
+                                        .trigger('change')
+                                        .trigger('select')
+                                        .trigger('input')
+                                        .trigger('blur');
+                                }
+                                
+                                // Método 5: Força atualização do DOM e mantém valor
+                                const observer = new MutationObserver(() => {
+                                    if (select.value !== value) {
+                                        select.value = value;
+                                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                                    }
+                                });
+                                observer.observe(select, { attributes: true, childList: true });
+                                
+                                select.innerHTML = select.innerHTML;
+                                select.value = value;
+                                
+                                // Garante que o observer será desconectado após um tempo
+                                setTimeout(() => observer.disconnect(), 1000);
+                                
+                                return true;
+                            }
+                            
+                            // Tenta setar o valor múltiplas vezes
+                            let attempts = 0;
+                            const maxAttempts = 5;
+                            const interval = setInterval(() => {
+                                const success = setSelectValue(arguments[0], arguments[1]);
+                                attempts++;
+                                
+                                if (success || attempts >= maxAttempts) {
+                                    clearInterval(interval);
+                                    if (success) {
+                                        // Força uma última atualização após um pequeno delay
+                                        setTimeout(() => {
+                                            arguments[0].value = arguments[1];
+                                            arguments[0].dispatchEvent(new Event('change', {
+                                                bubbles: true,
+                                                cancelable: true
+                                            }));
+                                        }, 100);
+                                    }
+                                }
+                            }, 200);
+                            
+                            // Primeira tentativa imediata
+                            setSelectValue(arguments[0], arguments[1]);
+                        """
+                        
+                        self.driver.execute_script(js_script, status_select, status_value)
+                        
+                        # Verifica se a seleção foi feita corretamente
+                        time.sleep(1)  # Pequena pausa para garantir que o JavaScript foi executado
+                    except Exception as js_error:
+                        self.logger.error(f"Erro ao usar JavaScript para status: {str(js_error)}")
+                        raise
+                        
+                    # Verifica se o valor foi realmente selecionado
+                    selected_value = status_select.get_attribute('value')
+                    selected_text = Select(status_select).first_selected_option.text
+                    selected_index = status_select.get_attribute('selectedIndex')
+                    self.logger.info(f"Valor selecionado no combo: {selected_value} (texto: {selected_text}, índice: {selected_index})")
                     
+                    # Verifica se a seleção está correta
+                    if selected_value != status_value:
+                        self.logger.error(f"Falha na seleção do status. Valor esperado: {status_value}, valor atual: {selected_value}")
+                        # Tenta uma última vez usando Select
+                        try:
+                            select = Select(status_select)
+                            select.select_by_value(status_value)
+                            time.sleep(1)  # Pequena pausa para a seleção
+                            selected_value = status_select.get_attribute('value')
+                            if selected_value != status_value:
+                                raise Exception(f"Falha ao selecionar status mesmo após retry")
+                        except Exception as e:
+                            self.logger.error(f"Erro no retry de seleção: {str(e)}")
+                            raise
+                    
+                    # Captura screenshot após a seleção se screenshots estiverem habilitados
+                    if self.enable_screenshots:
+                        self.take_screenshot("status_selection")
+                        
+                    # Verifica uma última vez antes de prosseguir
+                    final_value = status_select.get_attribute('value')
+                    self.logger.info(f"Valor final do status após todas as verificações: {final_value}")
+                        
                 except Exception as e:
                     self.logger.error(f"Erro ao selecionar status: {str(e)}")
                     if self.enable_screenshots:
@@ -542,6 +681,48 @@ class LegalScraper:
             return True
         except TimeoutException:
             self.logger.error("Timeout aguardando carregamento da página")
+            return False
+
+    def wait_for_grid_load(self):
+        """Aguarda o carregamento do grid de processos"""
+        try:
+            # Aguarda o grid aparecer e ter pelo menos uma linha
+            WebDriverWait(self.driver, 10).until(
+                lambda d: len(d.find_elements(By.CSS_SELECTOR, "#gridProcessos tr.jqgrow")) > 0
+            )
+            
+            # Aguarda o loading desaparecer
+            WebDriverWait(self.driver, 5).until_not(
+                EC.presence_of_element_located((By.CLASS_NAME, "loading"))
+            )
+            
+            # Pequena pausa para garantir que os dados estão estáveis
+            time.sleep(0.3)  # Reduzido de 1s para 0.3s
+            
+            return True
+        except TimeoutException:
+            self.logger.warning("Timeout aguardando carregamento do grid")
+            return False
+
+    def wait_for_page_load(self):
+        """Aguarda o carregamento completo da página"""
+        try:
+            # Aguarda elementos principais
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.ID, "gridProcessos"))
+            )
+            
+            # Aguarda o loading desaparecer
+            WebDriverWait(self.driver, 5).until_not(
+                EC.presence_of_element_located((By.CLASS_NAME, "loading"))
+            )
+            
+            # Pequena pausa para garantir que a página está estável
+            time.sleep(0.2)  # Reduzido de 0.5s para 0.2s
+            
+            return True
+        except TimeoutException:
+            self.logger.warning("Timeout aguardando carregamento da página")
             return False
 
     def safe_get_text(self, xpath):
@@ -642,11 +823,6 @@ class LegalScraper:
             headers = ['Número', 'Parte', 'Tipo', 'Valor', 'Status', 'Data Cadastro']
             processes = [headers]  # Start with headers as first row
 
-            # Limit the number of rows based on max_rows parameter
-            if self.max_rows is not None and self.max_rows > 0:
-                self.logger.info(f"Limitando a {self.max_rows} linhas conforme configurado")
-                rows = rows[:self.max_rows]
-
             for row_index, row in enumerate(rows):
                 try:
                     # Log the current row being processed
@@ -705,6 +881,46 @@ class LegalScraper:
                 self.take_screenshot("erro_extracao_lista")
             return [['Número', 'Parte', 'Tipo', 'Valor', 'Status', 'Data Cadastro']]  # Return empty table with headers
 
+    def extract_process_details(self, process_id, grid_data=None):
+        """Extrai detalhes completos de um processo específico"""
+        try:
+            if not process_id:
+                self.logger.warning(f"ID do processo não fornecido")
+                return None
+
+            # Primeiro verifica se o processo existe no banco de dados
+            db = DatabaseManager()
+            existing_process = db.get_process_by_id(process_id)
+            
+            if existing_process:
+                self.logger.info(f"Processo {process_id} encontrado no banco de dados, usando dados existentes")
+                return {
+                    'processo': existing_process,
+                    'raw_data': {process_id: existing_process}
+                }
+
+            # Se não existe no banco, faz o scrape
+            self.logger.info(f"Processo {process_id} não encontrado no banco, realizando scrape")
+            
+            # Navega para a página de detalhes do processo
+            details_url = f"https://cetelem.djur.adv.br/processo/details/{process_id}"
+            self.logger.info(f"Acessando detalhes do processo: {details_url}")
+            self.driver.get(details_url)
+
+            # Aguarda carregamento inicial
+            if not self.wait_for_page_load():
+                self.logger.warning(f"Timeout aguardando carregamento da página de detalhes do processo {process_id}")
+                return None
+
+            # Extrai os detalhes usando o scraper específico
+            process_details = self.process_details_scraper.extract_process_details(process_id, grid_data)
+            
+            return process_details
+
+        except Exception as e:
+            self.logger.error(f"Erro ao extrair detalhes do processo {process_id}: {str(e)}")
+            return None
+
     def get_acordo_details(self, url):
         """Extrai os detalhes do acordo da página de detalhes da obrigação"""
         try:
@@ -730,17 +946,11 @@ class LegalScraper:
                 },
                 "cpf_titular": {
                     "xpath": [
+                        "/html/body/div[6]/div[2]/div/div[1]/div[2]/div/div/div[1]/div/div/div/div[2]/div/div[1]/table/tbody/tr[15]/td[4]",
+                        "//*[@id='box-dadosprincipais']/div/div/div/div[2]/div/div[1]/table/tbody/tr[15]/td[4]",
                         "//td[strong[contains(text(), 'CPF do Titular')]]/following-sibling::td[1]",
                         "//td[contains(text(), 'CPF do Titular')]/following-sibling::td[1]",
-                        "//td[strong[contains(text(), 'CPF')]]/following-sibling::td[1]"
-                    ],
-                    "required": True
-                },
-                "valor_acordo": {
-                    "xpath": [
-                        "//td[strong[contains(text(), 'Valor Acordo')]]/following-sibling::td[1]",
-                        "//td[contains(text(), 'Valor Acordo')]/following-sibling::td[1]",
-                        "//td[strong[contains(text(), 'Valor')]]/following-sibling::td[1]"
+                        "//td[strong[contains(text(), 'CPF')]]/following-sibling::td[1]",
                     ],
                     "required": True
                 },
@@ -838,7 +1048,7 @@ class LegalScraper:
                         if len(cells) >= 8:  # Verifica se tem células suficientes
                             tipo_lancamento = cells[7].text.strip()  # Coluna do tipo de lançamento
                             
-                            if "ACORDO" in tipo_lancamento.upper():
+                            if "ACORDO" in tipo_lancamento.upper() or tipo_lancamento.upper() in  "ACORDO":
                                 self.logger.info("Encontrado lançamento do tipo ACORDO")
                                 
                                 # Encontra o link para os detalhes da obrigação

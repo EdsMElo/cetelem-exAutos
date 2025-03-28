@@ -5,8 +5,9 @@ from selenium.common.exceptions import TimeoutException
 import logging
 import json
 import time
+from config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class FinancialScraper:
     def __init__(self, driver):
@@ -15,6 +16,7 @@ class FinancialScraper:
 
     def extract_financial_data(self, process_id):
         """Extrai dados financeiros de um processo específico"""
+        start_time = time.time()
         try:
             if not process_id:
                 logger.warning(f"ID do processo inválido: {process_id}")
@@ -23,17 +25,20 @@ class FinancialScraper:
             # Estrutura para armazenar os dados financeiros
             financial_data = {
                 'lancamentos': [],
-                'resumo': {}
+                'resumo': {}  # Mantido vazio para compatibilidade
             }
 
             # Aguarda o carregamento dos dados financeiros
             try:
                 # Aguarda a tabela financeira carregar
+                load_start = time.time()
                 WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "#financeiroList"))
                 )
                 
-                time.sleep(2)
+                # Aguarda um curto período para garantir que os dados foram carregados
+                time.sleep(0.5)  # Reduzido de 2s para 0.5s
+                logger.info(f"[TEMPO] Carregamento da tabela financeira: {time.time() - load_start:.2f} segundos")
                 
                 # Tenta diferentes seletores para a tabela principal
                 financial_table = None
@@ -56,11 +61,11 @@ class FinancialScraper:
                     # Verifica os cabeçalhos da tabela
                     headers = financial_table.find_elements(By.CSS_SELECTOR, "thead th")
                     header_texts = [h.text.strip() for h in headers]
-                    logger.info(f"Cabeçalhos encontrados: {header_texts}")
+                    logger.debug(f"Cabeçalhos encontrados: {header_texts}")
                     
                     # Verifica o índice da coluna tipo
                     tipo_index = next((i for i, h in enumerate(header_texts) if 'TIPO' in h.upper()), 4)
-                    logger.info(f"Índice da coluna tipo: {tipo_index}")
+                    logger.debug(f"Índice da coluna tipo: {tipo_index}")
                     
                     # Extrai os dados financeiros
                     financial_rows = financial_table.find_elements(By.CSS_SELECTOR, "tbody tr")
@@ -70,6 +75,16 @@ class FinancialScraper:
                         try:
                             cells = row.find_elements(By.TAG_NAME, "td")
                             if len(cells) >= 9:  # Ajustado para 9 colunas conforme HTML
+                                # Primeiro verifica se é um acordo antes de extrair todos os dados
+                                try:
+                                    tipo_cell = cells[tipo_index].text.strip()
+                                    if not ('ACORDO' in tipo_cell.upper() or tipo_cell.upper() in 'ACORDO'):
+                                        logger.debug(f"Ignorando lançamento não-acordo: {tipo_cell}")
+                                        continue
+                                except Exception as e:
+                                    logger.debug(f"Erro ao verificar tipo de lançamento: {str(e)}")
+                                    continue
+                                
                                 lancamento = {}
                                 
                                 # Mapeamento dos índices das colunas conforme cabeçalhos
@@ -81,8 +96,8 @@ class FinancialScraper:
                                     'natureza': (6, 'text'),  # Natureza
                                     'data_pagamento': (7, 'text'),  # Data Pagamento
                                     'usuario': (8, 'text'),  # Usuário Cadastro
-                                    'suspeita_fraude': (None, 'N/A'),  # Campo adicional para suspeita de fraude
-                                    'is_acordo': (None, 'Não')  # Campo adicional para indicar se é acordo
+                                    'suspeita_fraude': (None, False),  # Campo adicional para suspeita de fraude
+                                    'is_acordo': (None, 'Sim')  # Já sabemos que é acordo neste ponto
                                 }
                                 
                                 # Extrai cada campo com tratamento de erro
@@ -111,7 +126,9 @@ class FinancialScraper:
                                                 logger.debug(f"Erro ao extrair link: {str(e)}")
                                                 continue
                                         elif field == 'suspeita_fraude':
-                                            value = 'N/A'  # Valor padrão, será atualizado depois
+                                            value = False  # Valor padrão, será atualizado depois
+                                        elif field == 'is_acordo':
+                                            value = True  # Valor padrão, pois já sabemos que é acordo
                                         else:
                                             value = cells[index].text.strip()
                                             # Log especial para o campo tipo
@@ -130,16 +147,10 @@ class FinancialScraper:
                                     if 'tipo' in lancamento:
                                         tipo = lancamento['tipo'].upper().strip()
                                         logger.info(f"Tipo de lançamento encontrado: '{tipo}' (original: '{lancamento['tipo']}')")
-                                        # Verifica se é um acordo
-                                        if tipo == 'ACORDO':
-                                            # Marca explicitamente que é um acordo
-                                            lancamento['is_acordo'] = 'Sim'
-                                            if 'link' in lancamento:
-                                                logger.info(f"Acordo encontrado com link: {json.dumps(lancamento, ensure_ascii=False)}")
-                                            else:
-                                                logger.warning(f"Acordo encontrado sem link: {json.dumps(lancamento, ensure_ascii=False)}")
+                                        if 'link' in lancamento:
+                                            logger.info(f"Acordo encontrado com link: {json.dumps(lancamento, ensure_ascii=False)}")
                                         else:
-                                            lancamento['is_acordo'] = 'Não'
+                                            logger.warning(f"Acordo encontrado sem link: {json.dumps(lancamento, ensure_ascii=False)}")
                                     
                                     financial_data['lancamentos'].append(lancamento)
                                     logger.debug(f"Lançamento adicionado: {json.dumps(lancamento, ensure_ascii=False)}")
@@ -149,30 +160,8 @@ class FinancialScraper:
                     
                     # Log do total de lançamentos e acordos encontrados
                     total_lancamentos = len(financial_data['lancamentos'])
-                    total_acordos = len([l for l in financial_data['lancamentos'] if l.get('tipo', '').upper().strip() == 'ACORDO'])
-                    logger.info(f"Total de lançamentos: {total_lancamentos}")
-                    logger.info(f"Total de acordos encontrados: {total_acordos}")
-
-                    # Extrai o resumo financeiro da tabela de resumo
-                    try:
-                        # Procura a tabela de resumo pelo estilo específico
-                        resumo_table = self.driver.find_element(By.CSS_SELECTOR, "table[style*='margin-top: 10px']")
-                        cells = resumo_table.find_elements(By.TAG_NAME, "td")
-                        
-                        if len(cells) >= 8:
-                            financial_data['resumo'] = {
-                                'total_debito': cells[3].text.strip(),
-                                'total_credito': cells[5].text.strip(),
-                                'saldo': cells[7].text.strip()
-                            }
-                            logger.info(f"Resumo financeiro extraído: {financial_data['resumo']}")
-                    except Exception as e:
-                        logger.warning(f"Erro ao extrair resumo financeiro: {str(e)}")
-                        financial_data['resumo'] = {
-                            'total_debito': "R$ 0,00",
-                            'total_credito': "R$ 0,00",
-                            'saldo': "R$ 0,00"
-                        }
+                    logger.info(f"Total de acordos encontrados: {total_lancamentos}")
+                    logger.info(f"[TEMPO] Extração dos dados financeiros: {time.time() - start_time:.2f} segundos")
                 
                 self.financial_data = financial_data
                 return self.financial_data
@@ -183,7 +172,7 @@ class FinancialScraper:
                 return self.financial_data
 
         except Exception as e:
-            logger.error(f"Erro ao extrair dados financeiros do processo {process_id}: {str(e)}")
+            logger.error(f"Erro ao extrair dados financeiros: {str(e)}")
             self.financial_data = {'lancamentos': [], 'resumo': {}}
             return self.financial_data
 

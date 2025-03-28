@@ -1,0 +1,1 @@
+select count(1) qtde_reg_processos from processes;
